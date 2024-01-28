@@ -1,5 +1,4 @@
 const mysql = require('mysql2');
-// const inquirer = require('inquirer');
 const employeeTracker = require('./app/employeetracker.js');
 
 // Connect to database
@@ -25,4 +24,4 @@ db.connect((err) => {
   employeeTracker(db);
 });
 
-module.exports = mysql;
+// module.exports = { mysql, db };
