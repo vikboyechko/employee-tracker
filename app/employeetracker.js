@@ -1,7 +1,8 @@
 const inquirer = require('inquirer');
-const consoleTable = require('console.table');
-const clear = require('clear');
+const consoleTable = require('console.table'); // package to print mysql rows to console
+const clear = require('clear'); // package to clear the console after actions
 
+// Prompt for the main menu, makes it easier to add new options later
 const menuPrompt = [
   {
     type: 'list',
@@ -20,8 +21,9 @@ const menuPrompt = [
   },
 ];
 
-// Function to get department choices
+// Function to get department choices from the DB, for the Add Role menu option, but could be used elsewhere
 function getDepartmentChoices(db) {
+  // i use a promise because the inquirer prompt needs to wait for the db query to finish
   return new Promise((resolve, reject) => {
     db.query(
       `
@@ -32,10 +34,12 @@ function getDepartmentChoices(db) {
           console.error('Error executing the query:', err);
           reject(err);
         } else {
+          // each department is an object with id and name properties
           const choices = results.map((department) => ({
             name: department.name,
             value: department.id,
           }));
+          // resolve the promise with the choices
           resolve(choices);
         }
       }
@@ -43,6 +47,7 @@ function getDepartmentChoices(db) {
   });
 }
 
+// Function to return to the main menu or exit after any action is taken
 function returnToMenu(db) {
   const returnPrompt = [
     {
@@ -56,21 +61,25 @@ function returnToMenu(db) {
     if (response.return === 'Return to Menu') {
       employeeTracker(db);
     } else {
-      console.clear();
-      process.exit();
+      console.clear(); // clears the console
+      process.exit(); // exits the node app
     }
   });
 }
 
+// The main app, takes the db connection as an argument from server.js
 function employeeTracker(db) {
   console.clear();
   console.log('*** EMPLOYEE TRACKER ***\n');
 
   inquirer.prompt(menuPrompt).then((response) => {
-    // View All Departments
+    //
+    // BEGIN VIEW ALL DEPARTMENTS SECTION
     if (response.menu === 'View All Departments') {
       console.clear();
       console.log('\n** Viewing All Departments **\n');
+
+      // simple query to get all departments
       db.query(
         `
       SELECT * FROM department
@@ -80,16 +89,19 @@ function employeeTracker(db) {
             console.error('Error executing the query:', err);
             returnToMenu(db);
           } else {
-            console.table(results);
+            console.table(results); // prints the results to the console using the console.table package
             returnToMenu(db);
           }
         }
       );
-
-      // View All Roles
+      // END VIEW ALL DEPARTMENTS SECTION
+      //
+      // BEGIN VIEW ALL ROLES SECTION
     } else if (response.menu === 'View All Roles') {
       console.clear();
       console.log('\n** Viewing All Roles **\n');
+
+      // simple query to get all roles
       db.query(
         `
       SELECT * FROM role
@@ -104,11 +116,14 @@ function employeeTracker(db) {
           }
         }
       );
-
-      // View All Employees
+      // END VIEW ALL ROLES SECTION
+      //
+      // BEGIN VIEW ALL EMPLOYEES SECTION
     } else if (response.menu === 'View All Employees') {
       console.clear();
       console.log('\n** Viewing All Employees **\n');
+
+      // simple query to get all employees
       db.query(
         `
       SELECT * FROM employee
@@ -123,12 +138,14 @@ function employeeTracker(db) {
           }
         }
       );
-
-      // Add Department
+      // END VIEW ALL EMPLOYEES SECTION
+      //
+      // BEGIN ADD DEPARTMENT SECTION
     } else if (response.menu === 'Add Department') {
       console.clear();
       console.log('\n** Add Department **\n');
 
+      // prompt for the new department name
       inquirer
         .prompt([
           {
@@ -139,12 +156,15 @@ function employeeTracker(db) {
         ])
         .then((response) => {
           const departmentName = response.name;
+
+          // insert the new departmentName into the db
           db.query(
             `
           INSERT INTO department (name)
           VALUES (?)
           `,
             [departmentName],
+            // callback function to handle errors and success
             function (err, results) {
               if (err) {
                 console.error('Error executing the query:', err);
@@ -156,10 +176,14 @@ function employeeTracker(db) {
             }
           );
         });
-
-      // ADD ROLE SECTION
+      // END ADD DEPARTMENT SECTION
+      //
+      // BEGIN ADD ROLE SECTION
     } else if (response.menu === 'Add Role') {
-      // have to add this inside the if statement so that the db is passed to getDepartmentChoices
+      console.clear();
+      console.log('\n** Add Role **\n');
+
+      // prompt for the new role info
       const newRolePrompt = [
         {
           type: 'input',
@@ -176,25 +200,26 @@ function employeeTracker(db) {
           message: 'Select Department: ',
           name: 'department',
           choices: function () {
-            return getDepartmentChoices(db); // Pass db to getDepartmentChoices
+            return getDepartmentChoices(db); // Pass db to the getDepartmentChoices function to get the list of departments
           },
         },
       ];
 
-      console.clear();
-      console.log('\n** Add Role **\n');
-
+      // after the prompts are answered, assign responses to values and insert into the db
       inquirer.prompt(newRolePrompt).then((response) => {
         const roleTitle = response.title;
         const roleSalary = response.salary;
         const roleDepartment = response.department;
 
+        // insert multiple values using ? placeholders and an array of values
         db.query(
           `
           INSERT INTO role (title, salary, department_id)
           VALUES (?, ?, ?)
           `,
           [roleTitle, roleSalary, roleDepartment],
+
+          // callback function to handle errors and success
           function (err, results) {
             if (err) {
               console.error('Error executing the query:', err);
@@ -206,12 +231,14 @@ function employeeTracker(db) {
           }
         );
       });
-
+      // END ADD ROLE SECTION
+      //
       // ADD EMPLOYEE SECTION
     } else if (response.menu === 'Add Employee') {
       console.clear();
       console.log('\n** Add Employee **\n');
 
+      // declare variables to hold the lists of roles and employees
       let rolesList = [];
       let employeesList = [];
 
@@ -225,6 +252,7 @@ function employeeTracker(db) {
             console.error('Error executing the query:', error);
             returnToMenu(db);
           }
+          // map the results to an array of objects with name and value properties, and a None option
           rolesList = [
             { name: 'None', value: null },
             ...results.map((role) => ({
@@ -244,6 +272,7 @@ function employeeTracker(db) {
           if (error) {
             console.error('Error executing the query:', error);
           } else {
+            // map the results to array, with employee first and last name concatenated, and a None option
             employeesList = [
               { name: 'None', value: null },
               ...results.map((employee) => ({
@@ -252,6 +281,7 @@ function employeeTracker(db) {
               })),
             ];
 
+            // now we can use the roles and employees lists to prompt for the new employee info
             const newEmployeePrompt = [
               {
                 type: 'input',
@@ -277,18 +307,22 @@ function employeeTracker(db) {
               },
             ];
 
+            // after the prompts are answered, assign responses to values and insert into the db
             inquirer.prompt(newEmployeePrompt).then((response) => {
               const employeeFirstName = response.firstname;
               const employeeLastName = response.lastname;
               const employeeRole = response.role;
               const employeeManager = response.manager;
 
+              // insert multiple values using placeholders into the employee table
               db.query(
                 `
                 INSERT INTO employee (first_name, last_name, role_id, manager_id)
                 VALUES (?, ?, ?, ?)
                 `,
                 [employeeFirstName, employeeLastName, employeeRole, employeeManager],
+
+                // callback function to handle errors and success
                 function (err, results) {
                   if (err) {
                     console.error('Error executing the query:', err);
@@ -303,9 +337,15 @@ function employeeTracker(db) {
           }
         }
       );
+      // END ADD EMPLOYEE SECTION
+      //
+      // BEGIN UPDATE EMPLOYEE ROLE SECTION
     } else if (response.menu === 'Update Employee Role') {
       console.clear();
       console.log('\n** Update Employee Role **\n');
+
+      // this section is similar to the Add Employee section, but with a different inquirer prompt
+
       let rolesList = [];
       let employeesList = [];
 
@@ -361,6 +401,7 @@ function employeeTracker(db) {
               },
             ];
 
+            // now we can take the prompt responses and update the employee role in the db
             inquirer.prompt(updateEmployeePrompt).then((response) => {
               const employee = response.employee;
               const employeeRole = response.role;
@@ -372,6 +413,8 @@ function employeeTracker(db) {
                 WHERE id = ?
                 `,
                 [employeeRole, employee],
+
+                // callback function to handle errors and success
                 function (err, results) {
                   if (err) {
                     console.error('Error executing the query:', err);
@@ -386,6 +429,9 @@ function employeeTracker(db) {
           }
         }
       );
+      // END UPDATE EMPLOYEE ROLE SECTION
+      //
+      // BEGIN EXIT SECTION
     } else if (response.menu === 'Exit') {
       console.clear();
       process.exit();
@@ -393,4 +439,5 @@ function employeeTracker(db) {
   });
 }
 
+// export the employeeTracker function so it can be used in server.js
 module.exports = employeeTracker;
