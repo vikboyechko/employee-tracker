@@ -51,49 +51,22 @@ function getDepartmentChoices(db) {
   });
 }
 
-// Function to get role choices
-function getRoleChoices(db) {
-  return new Promise((resolve, reject) => {
-    db.query(
-      `
-      SELECT id, title FROM role
-      `,
-      function (err, results) {
-        if (err) {
-          console.error('Error executing the query:', err);
-          reject(err);
-        } else {
-          const choices = results.map((role) => ({
-            name: role.title,
-            value: role.id,
-          }));
-          resolve(choices);
-        }
-      }
-    );
-  });
-}
-
-// function to get employee choices
-function getEmployeeChoices(db) {
-  return new Promise((resolve, reject) => {
-    db.query(
-      `
-      SELECT * FROM employee
-      `,
-      function (err, results) {
-        if (err) {
-          console.error('Error executing the query:', err);
-          reject(err);
-        } else {
-          const choices = results.map((employee) => ({
-            name: employee.first_name + ' ' + employee.last_name,
-            value: employee.id,
-          }));
-          resolve(choices);
-        }
-      }
-    );
+function returnToMenu(db) {
+  const returnPrompt = [
+    {
+      type: 'list',
+      message: '',
+      choices: ['Return to Menu', 'Exit'],
+      name: 'return',
+    },
+  ];
+  inquirer.prompt(returnPrompt).then((response) => {
+    if (response.return === 'Return to Menu') {
+      employeeTracker(db);
+    } else {
+      console.clear();
+      process.exit();
+    }
   });
 }
 
@@ -163,6 +136,7 @@ function employeeTracker(db) {
     } else if (response.menu === 'Add Department') {
       console.clear();
       console.log('\n** Add Department **\n');
+
       inquirer.prompt(newDepartmentPrompt).then((response) => {
         const departmentName = response.name;
         db.query(
@@ -233,108 +207,102 @@ function employeeTracker(db) {
         );
       });
 
-      // Add Employee
+      // ADD EMPLOYEE SECTION
     } else if (response.menu === 'Add Employee') {
-      const newEmployeePrompt = [
-        {
-          type: 'input',
-          message: 'New Employee First Name: ',
-          name: 'firstname',
-        },
-        {
-          type: 'input',
-          message: 'New Employee Last Name: ',
-          name: 'lastname',
-        },
-        {
-          type: 'list',
-          message: 'Select Role: ',
-          name: 'role',
-          choices: function () {
-            return getRoleChoices(db); // Pass db to getRole
-          },
-        },
-        {
-          type: 'list',
-          message: 'Select Manager: ',
-          name: 'manager',
-          choices: [
-            'None',
-            function () {
-              return getEmployeeChoices(db); // Pass db to getEmployeeChoices
-            },
-          ],
-        },
-      ];
-
       console.clear();
       console.log('\n** Add Employee **\n');
 
-      inquirer.prompt(newEmployeePrompt).then((response) => {
-        const employeeFirstName = response.firstname;
-        const employeeLastName = response.lastname;
-        const employeeRole = response.role;
-        const employeeManager = response.manager;
+      let rolesList = [];
+      let employeesList = [];
 
-        db.query(
-          `
-          INSERT INTO employee (first_name, last_name, role_id, manager_id)
-          VALUES (?, ?, ?, ?)
-          `,
-          [employeeFirstName, employeeLastName, employeeRole, employeeManager],
-          function (err, results) {
-            if (err) {
-              console.error('Error executing the query:', err);
-              returnToMenu(db);
-            } else {
-              console.log('Employee added successfully');
-              returnToMenu(db);
-            }
-          }
-        );
-      });
-
-      // Update Employee Role
-    } else if (response.menu === 'Update Employee Role') {
-      // Code for updating employee role
-      console.clear();
-      console.log('\n** Update Employee Role **\n');
+      // get latest roles from the db
       db.query(
         `
-      SELECT * FROM employee
-      `,
-        function (err, results) {
-          if (err) {
-            console.error('Error executing the query:', err);
+        SELECT id, title FROM role
+        `,
+        function (error, results) {
+          if (error) {
+            console.error('Error executing the query:', error);
             returnToMenu(db);
+          }
+          rolesList = [
+            { name: 'None', value: null },
+            ...results.map((role) => ({
+              name: role.title,
+              value: role.id,
+            })),
+          ];
+        }
+      );
+
+      // get latest employees from the db
+      db.query(
+        `
+        SELECT id, first_name, last_name FROM employee
+        `,
+        function (error, results) {
+          if (error) {
+            console.error('Error executing the query:', error);
           } else {
-            console.table(results);
-            returnToMenu(db);
+            employeesList = [
+              { name: 'None', value: null },
+              ...results.map((employee) => ({
+                name: employee.first_name + ' ' + employee.last_name,
+                value: employee.id,
+              })),
+            ];
+
+            const newEmployeePrompt = [
+              {
+                type: 'input',
+                message: 'New Employee First Name: ',
+                name: 'firstname',
+              },
+              {
+                type: 'input',
+                message: 'New Employee Last Name: ',
+                name: 'lastname',
+              },
+              {
+                type: 'list',
+                message: 'Select Role: ',
+                name: 'role',
+                choices: rolesList,
+              },
+              {
+                type: 'list',
+                message: 'Select Manager: ',
+                name: 'manager',
+                choices: employeesList,
+              },
+            ];
+
+            inquirer.prompt(newEmployeePrompt).then((response) => {
+              const employeeFirstName = response.firstname;
+              const employeeLastName = response.lastname;
+              const employeeRole = response.role;
+              const employeeManager = response.manager;
+
+              db.query(
+                `
+                INSERT INTO employee (first_name, last_name, role_id, manager_id)
+                VALUES (?, ?, ?, ?)
+                `,
+                [employeeFirstName, employeeLastName, employeeRole, employeeManager],
+                function (err, results) {
+                  if (err) {
+                    console.error('Error executing the query:', err);
+                    returnToMenu(db);
+                  } else {
+                    console.log('Employee added successfully');
+                    returnToMenu(db);
+                  }
+                }
+              );
+            });
           }
         }
       );
-    } else if (response.menu === 'Exit') {
-      console.clear();
-      process.exit();
-    }
-  });
-}
-
-function returnToMenu(db) {
-  const returnPrompt = [
-    {
-      type: 'list',
-      message: '',
-      choices: ['Return to Menu', 'Exit'],
-      name: 'return',
-    },
-  ];
-  inquirer.prompt(returnPrompt).then((response) => {
-    if (response.return === 'Return to Menu') {
-      employeeTracker(db);
-    } else {
-      console.clear();
-      process.exit();
     }
   });
 }
