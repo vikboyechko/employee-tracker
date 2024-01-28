@@ -15,6 +15,7 @@ const menuPrompt = [
       'Add Role',
       'Add Employee',
       'Update Employee Role',
+      'Exit',
     ],
   },
 ];
@@ -32,19 +33,64 @@ function getDepartmentChoices(db) {
   return new Promise((resolve, reject) => {
     db.query(
       `
-        SELECT * FROM department
+      SELECT * FROM department
       `,
       function (err, results) {
         if (err) {
           console.error('Error executing the query:', err);
           reject(err);
         } else {
-          resolve(
-            results.map((department) => ({
-              name: department.name,
-              value: department.id,
-            }))
-          );
+          const choices = results.map((department) => ({
+            name: department.name,
+            value: department.id,
+          }));
+          resolve(choices);
+        }
+      }
+    );
+  });
+}
+
+// Function to get role choices
+function getRoleChoices(db) {
+  return new Promise((resolve, reject) => {
+    db.query(
+      `
+      SELECT id, title FROM role
+      `,
+      function (err, results) {
+        if (err) {
+          console.error('Error executing the query:', err);
+          reject(err);
+        } else {
+          const choices = results.map((role) => ({
+            name: role.title,
+            value: role.id,
+          }));
+          resolve(choices);
+        }
+      }
+    );
+  });
+}
+
+// function to get employee choices
+function getEmployeeChoices(db) {
+  return new Promise((resolve, reject) => {
+    db.query(
+      `
+      SELECT * FROM employee
+      `,
+      function (err, results) {
+        if (err) {
+          console.error('Error executing the query:', err);
+          reject(err);
+        } else {
+          const choices = results.map((employee) => ({
+            name: employee.first_name + ' ' + employee.last_name,
+            value: employee.id,
+          }));
+          resolve(choices);
         }
       }
     );
@@ -62,8 +108,8 @@ function employeeTracker(db) {
       console.log('\n** Viewing All Departments **\n');
       db.query(
         `
-        SELECT * FROM department
-        `,
+      SELECT * FROM department
+      `,
         function (err, results) {
           if (err) {
             console.error('Error executing the query:', err);
@@ -81,8 +127,8 @@ function employeeTracker(db) {
       console.log('\n** Viewing All Roles **\n');
       db.query(
         `
-        SELECT * FROM role
-        `,
+      SELECT * FROM role
+      `,
         function (err, results) {
           if (err) {
             console.error('Error executing the query:', err);
@@ -100,8 +146,8 @@ function employeeTracker(db) {
       console.log('\n** Viewing All Employees **\n');
       db.query(
         `
-        SELECT * FROM employee
-        `,
+      SELECT * FROM employee
+      `,
         function (err, results) {
           if (err) {
             console.error('Error executing the query:', err);
@@ -121,16 +167,16 @@ function employeeTracker(db) {
         const departmentName = response.name;
         db.query(
           `
-            INSERT INTO department (name)
-            VALUES (?)
-            `,
+          INSERT INTO department (name)
+          VALUES (?)
+          `,
           [departmentName],
           function (err, results) {
             if (err) {
               console.error('Error executing the query:', err);
               returnToMenu(db);
             } else {
-              console.table(results);
+              console.log('Department added successfully');
               returnToMenu(db);
             }
           }
@@ -139,6 +185,7 @@ function employeeTracker(db) {
 
       // Add Role
     } else if (response.menu === 'Add Role') {
+      // have to add this inside the if statement so that the db is passed to getDepartmentChoices
       const newRolePrompt = [
         {
           type: 'input',
@@ -170,48 +217,92 @@ function employeeTracker(db) {
 
         db.query(
           `
-            INSERT INTO role (title, salary, department_id)
-            VALUES (?, ?, ?)
-            `,
+          INSERT INTO role (title, salary, department_id)
+          VALUES (?, ?, ?)
+          `,
           [roleTitle, roleSalary, roleDepartment],
           function (err, results) {
             if (err) {
               console.error('Error executing the query:', err);
               returnToMenu(db);
             } else {
-              console.table(results);
+              console.log('Role added successfully');
               returnToMenu(db);
             }
           }
         );
       });
+
       // Add Employee
     } else if (response.menu === 'Add Employee') {
+      const newEmployeePrompt = [
+        {
+          type: 'input',
+          message: 'New Employee First Name: ',
+          name: 'firstname',
+        },
+        {
+          type: 'input',
+          message: 'New Employee Last Name: ',
+          name: 'lastname',
+        },
+        {
+          type: 'list',
+          message: 'Select Role: ',
+          name: 'role',
+          choices: function () {
+            return getRoleChoices(db); // Pass db to getRole
+          },
+        },
+        {
+          type: 'list',
+          message: 'Select Manager: ',
+          name: 'manager',
+          choices: [
+            'None',
+            function () {
+              return getEmployeeChoices(db); // Pass db to getEmployeeChoices
+            },
+          ],
+        },
+      ];
+
       console.clear();
       console.log('\n** Add Employee **\n');
-      db.query(
-        `
-        SELECT * FROM employee
-        `,
-        function (err, results) {
-          if (err) {
-            console.error('Error executing the query:', err);
-            returnToMenu(db);
-          } else {
-            console.table(results);
-            returnToMenu(db);
+
+      inquirer.prompt(newEmployeePrompt).then((response) => {
+        const employeeFirstName = response.firstname;
+        const employeeLastName = response.lastname;
+        const employeeRole = response.role;
+        const employeeManager = response.manager;
+
+        db.query(
+          `
+          INSERT INTO employee (first_name, last_name, role_id, manager_id)
+          VALUES (?, ?, ?, ?)
+          `,
+          [employeeFirstName, employeeLastName, employeeRole, employeeManager],
+          function (err, results) {
+            if (err) {
+              console.error('Error executing the query:', err);
+              returnToMenu(db);
+            } else {
+              console.log('Employee added successfully');
+              returnToMenu(db);
+            }
           }
-        }
-      );
+        );
+      });
 
       // Update Employee Role
     } else if (response.menu === 'Update Employee Role') {
+      // Code for updating employee role
       console.clear();
       console.log('\n** Update Employee Role **\n');
       db.query(
         `
-        SELECT * FROM employee
-        `,
+      SELECT * FROM employee
+      `,
         function (err, results) {
           if (err) {
             console.error('Error executing the query:', err);
@@ -222,6 +313,9 @@ function employeeTracker(db) {
           }
         }
       );
+    } else if (response.menu === 'Exit') {
+      console.clear();
+      process.exit();
     }
   });
 }

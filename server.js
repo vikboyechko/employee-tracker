@@ -16,12 +16,5 @@ db.connect((err) => {
     return;
   }
   console.log('Database succesfully connected');
-  //   db.end();
-  // Wait 3 seconds, clear the message, run the Employee Tracker app
-  //   setTimeout(() => {
-  //     clear();
-  //   }, 3000);
   employeeTracker(db);
 });
-
-// module.exports = { mysql, db };
