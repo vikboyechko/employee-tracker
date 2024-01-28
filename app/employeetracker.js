@@ -20,14 +20,6 @@ const menuPrompt = [
   },
 ];
 
-const newDepartmentPrompt = [
-  {
-    type: 'input',
-    message: 'New Department Name: ',
-    name: 'name',
-  },
-];
-
 // Function to get department choices
 function getDepartmentChoices(db) {
   return new Promise((resolve, reject) => {
@@ -137,25 +129,33 @@ function employeeTracker(db) {
       console.clear();
       console.log('\n** Add Department **\n');
 
-      inquirer.prompt(newDepartmentPrompt).then((response) => {
-        const departmentName = response.name;
-        db.query(
-          `
+      inquirer
+        .prompt([
+          {
+            type: 'input',
+            message: 'New Department Name: ',
+            name: 'name',
+          },
+        ])
+        .then((response) => {
+          const departmentName = response.name;
+          db.query(
+            `
           INSERT INTO department (name)
           VALUES (?)
           `,
-          [departmentName],
-          function (err, results) {
-            if (err) {
-              console.error('Error executing the query:', err);
-              returnToMenu(db);
-            } else {
-              console.log('Department added successfully');
-              returnToMenu(db);
+            [departmentName],
+            function (err, results) {
+              if (err) {
+                console.error('Error executing the query:', err);
+                returnToMenu(db);
+              } else {
+                console.log('Department added successfully');
+                returnToMenu(db);
+              }
             }
-          }
-        );
-      });
+          );
+        });
 
       // Add Role
     } else if (response.menu === 'Add Role') {
@@ -303,6 +303,9 @@ function employeeTracker(db) {
           }
         }
       );
+    } else if (response.menu === 'Exit') {
+      console.clear();
+      process.exit();
     }
   });
 }
