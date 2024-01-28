@@ -157,7 +157,7 @@ function employeeTracker(db) {
           );
         });
 
-      // Add Role
+      // ADD ROLE SECTION
     } else if (response.menu === 'Add Role') {
       // have to add this inside the if statement so that the db is passed to getDepartmentChoices
       const newRolePrompt = [
@@ -295,6 +295,89 @@ function employeeTracker(db) {
                     returnToMenu(db);
                   } else {
                     console.log('Employee added successfully');
+                    returnToMenu(db);
+                  }
+                }
+              );
+            });
+          }
+        }
+      );
+    } else if (response.menu === 'Update Employee Role') {
+      console.clear();
+      console.log('\n** Update Employee Role **\n');
+      let rolesList = [];
+      let employeesList = [];
+
+      // get latest roles from the db
+      db.query(
+        `
+        SELECT id, title FROM role
+        `,
+        function (error, results) {
+          if (error) {
+            console.error('Error executing the query:', error);
+            returnToMenu(db);
+          }
+          rolesList = [
+            { name: 'None', value: null },
+            ...results.map((role) => ({
+              name: role.title,
+              value: role.id,
+            })),
+          ];
+        }
+      );
+
+      // get latest employees from the db
+      db.query(
+        `
+        SELECT id, first_name, last_name FROM employee
+        `,
+        function (error, results) {
+          if (error) {
+            console.error('Error executing the query:', error);
+          } else {
+            employeesList = [
+              { name: 'None', value: null },
+              ...results.map((employee) => ({
+                name: employee.first_name + ' ' + employee.last_name,
+                value: employee.id,
+              })),
+            ];
+
+            const updateEmployeePrompt = [
+              {
+                type: 'list',
+                message: 'Select Employee to Update Role: ',
+                name: 'employee',
+                choices: employeesList,
+              },
+              {
+                type: 'list',
+                message: 'Select Role to Assign to Employee: ',
+                name: 'role',
+                choices: rolesList,
+              },
+            ];
+
+            inquirer.prompt(updateEmployeePrompt).then((response) => {
+              const employee = response.employee;
+              const employeeRole = response.role;
+
+              db.query(
+                `
+                UPDATE employee
+                SET role_id = ?
+                WHERE id = ?
+                `,
+                [employeeRole, employee],
+                function (err, results) {
+                  if (err) {
+                    console.error('Error executing the query:', err);
+                    returnToMenu(db);
+                  } else {
+                    console.log('Employee role updated successfully');
                     returnToMenu(db);
                   }
                 }
