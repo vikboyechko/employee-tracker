@@ -4,8 +4,6 @@ This is a command-line app that allows users to manage departments, employees, a
 
 And because it's a backend CLI app, it uses a package to display MySQL tables nicely inside the terminal, and another package to clear the terminal after an action has been made, which enhances the user experience.
 
-[Watch a video demonstration of the app](https://app.screencastify.com/v3/watch/y1BIvqYSCGnzXDB4ISGe)
-
 ![Employee Tracker Screenshot](/employee-tracker-app.jpg)
 
 ## Installation
